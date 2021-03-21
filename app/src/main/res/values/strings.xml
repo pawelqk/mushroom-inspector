@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">mushroom-inspector</string>
+    <string name="cpu_device">CPU device</string>
+    <string name="gpu_device">GPU device</string>
+    <string name="hint_num_of_threads">Number of threads used by CPU classifier</string>
+    <string name="select_picture_from_the_gallery">Select picture from the gallery</string>
+    <string name="run_classification">Run classification</string>
+    <string name="classification_result_hint">Here classification result will be shown</string>
+    <string name="iv_picture_content_descr">Image selected from the gallery</string>
 </resources>
