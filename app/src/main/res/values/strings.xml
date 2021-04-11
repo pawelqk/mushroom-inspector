@@ -7,4 +7,5 @@
     <string name="run_classification">Run classification</string>
     <string name="classification_result_hint">Here classification result will be shown</string>
     <string name="iv_picture_content_descr">Image selected from the gallery</string>
+    <string name="take_photo">Take photo</string>
 </resources>

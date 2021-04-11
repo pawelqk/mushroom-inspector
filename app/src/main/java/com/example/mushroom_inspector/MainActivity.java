@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -13,13 +15,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import com.example.mushroom_inspector.env.Logger;
 import com.example.mushroom_inspector.tflite.Classifier;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,15 +37,18 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 public class MainActivity extends AppCompatActivity {
     private static final Logger LOGGER = new Logger();
     private static final int RESULT_LOAD_IMG_CODE = 1;
+    private static final int REQUEST_IMAGE_CAPTURE = 2;
     private Classifier classifier;
     private Bitmap picture;
     private boolean classficationRunning;
     private Disposable classificationDisposable;
+    private Uri photoUri;
 
     private RadioGroup rgDevices;
     private EditText etNumOfThreads;
     private Button btnSelectPicture;
     private Button btnRunClassifier;
+    private Button btnTakePhoto;
     private ImageView ivPicture;
     private TextView tvClassificationResult;
 
@@ -65,11 +74,13 @@ public class MainActivity extends AppCompatActivity {
         etNumOfThreads = findViewById(R.id.et_num_of_threads);
         btnSelectPicture = findViewById(R.id.btn_image_select);
         btnRunClassifier = findViewById(R.id.btn_run_classification);
+        btnTakePhoto = findViewById(R.id.btn_take_photo);
         ivPicture = findViewById(R.id.iv_picture);
         tvClassificationResult = findViewById(R.id.tv_classification_result);
 
         btnSelectPicture.setOnClickListener(v -> selectPictureFromGallery());
         btnRunClassifier.setOnClickListener(v -> runClassification());
+        btnTakePhoto.setOnClickListener(v -> takePhoto());
     }
 
     private void init() {
@@ -87,18 +98,18 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(reqCode, resultCode, data);
         if (reqCode == RESULT_LOAD_IMG_CODE) {
             if (resultCode == RESULT_OK)
-                loadPicture(data);
+                loadPicture(data.getData());
             else
                 Toast.makeText(
                         this,
                         "Getting picture from gallery unsuccessful",
                         Toast.LENGTH_SHORT
                 ).show();
-        }
+        } else if (reqCode == REQUEST_IMAGE_CAPTURE)
+            loadPicture(photoUri);
     }
 
-    private void loadPicture(Intent data) {
-        Uri imageUri = data.getData();
+    private void loadPicture(Uri imageUri) {
         try {
             BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
             decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
@@ -235,4 +246,36 @@ public class MainActivity extends AppCompatActivity {
 
         tvClassificationResult.setText(strBuilder.toString());
     }
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        return image;
+    }
+
+    private void takePhoto() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File photoFile = null;
+        try {
+            photoFile = createImageFile();
+        } catch (IOException ex) {
+        }
+
+        if (photoFile != null) {
+            photoUri = FileProvider.getUriForFile(this,
+                    "com.example.android.fileprovider",
+                    photoFile);
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        }
+    }
+
 }
