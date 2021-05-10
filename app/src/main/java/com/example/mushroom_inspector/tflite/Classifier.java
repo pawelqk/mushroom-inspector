@@ -41,6 +41,7 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -299,8 +300,11 @@ public abstract class Classifier {
               }
             });
 
+
+    List<Float> values = new ArrayList<>(labelProb.values());
+
     for (Map.Entry<String, Float> entry : labelProb.entrySet()) {
-      pq.add(new Recognition("" + entry.getKey(), entry.getKey(), entry.getValue(), null));
+      pq.add(new Recognition("" + entry.getKey(), entry.getKey(), (float)softmax(entry.getValue(), values), null));
     }
 
     final ArrayList<Recognition> recognitions = new ArrayList<>();
@@ -309,6 +313,11 @@ public abstract class Classifier {
       recognitions.add(pq.poll());
     }
     return recognitions;
+  }
+
+  private static double softmax(float input, List<Float>neuronValues) {
+    double total = neuronValues.stream().map(Math::exp).reduce(0.0, Double::sum);
+    return Math.exp(input) / total;
   }
 
   /** Gets the name of the model file stored in Assets. */
