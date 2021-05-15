@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -39,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
     private static final Logger LOGGER = new Logger();
     private static final int RESULT_LOAD_IMG_CODE = 1;
     private static final int REQUEST_IMAGE_CAPTURE = 2;
-    private static final double CLASSIFICATION_THRESHOLD = 0.35;
     private Classifier classifier;
     private Bitmap picture;
     private boolean classficationRunning;
@@ -198,9 +196,7 @@ public class MainActivity extends AppCompatActivity {
         classficationRunning = true;
         classificationDisposable = Observable
                 .fromCallable(() -> {
-//                    Toast.makeText(this, "1/x", Toast.LENGTH_SHORT).show();
                     recreateClassifier(device, numThreads);
-//                    Toast.makeText(this, "2/x", Toast.LENGTH_SHORT).show();
                     return classifier.recognizeImage(picture, 0);
                 })
                 .subscribeOn(Schedulers.io())
@@ -208,13 +204,9 @@ public class MainActivity extends AppCompatActivity {
                 .subscribe(recognitions -> {
                     if (classifier != null) {
                         classifier.close();
-//                    } else {
-//                        Toast.makeText(this, "n/x", Toast.LENGTH_SHORT).show();
                     }
-//                    Toast.makeText(this, "3/x", Toast.LENGTH_SHORT).show();
                     classficationRunning = false;
                     showClassificationResult(recognitions);
-//                    Toast.makeText(this, "x/x", Toast.LENGTH_SHORT).show();
                 }, errorThrowable -> {
                     if (classifier != null)
                         classifier.close();
@@ -246,13 +238,12 @@ public class MainActivity extends AppCompatActivity {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
+
+        return File.createTempFile(
                 imageFileName,  /* prefix */
                 ".jpg",         /* suffix */
                 storageDir      /* directory */
         );
-
-        return image;
     }
 
     private void takePhoto() {
