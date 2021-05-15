@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -25,6 +26,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private static final Logger LOGGER = new Logger();
     private static final int RESULT_LOAD_IMG_CODE = 1;
     private static final int REQUEST_IMAGE_CAPTURE = 2;
+    private static final double CLASSIFICATION_THRESHOLD = 0.75;
     private Classifier classifier;
     private Bitmap picture;
     private boolean classficationRunning;
@@ -50,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
     private Button btnRunClassifier;
     private Button btnTakePhoto;
     private ImageView ivPicture;
-    private TextView tvClassificationResult;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
         btnRunClassifier = findViewById(R.id.btn_run_classification);
         btnTakePhoto = findViewById(R.id.btn_take_photo);
         ivPicture = findViewById(R.id.iv_picture);
-        tvClassificationResult = findViewById(R.id.tv_classification_result);
 
         btnSelectPicture.setOnClickListener(v -> selectPictureFromGallery());
         btnRunClassifier.setOnClickListener(v -> runClassification());
@@ -222,29 +224,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showClassificationResult(List<Classifier.Recognition> results) {
-        Toast.makeText(this, "Classification done", Toast.LENGTH_SHORT).show();
         StringBuilder strBuilder = new StringBuilder();
-        for (Classifier.Recognition recognition : results) {
-            if (recognition == null)
-                continue;
-            if (recognition.getTitle() != null) {
-                strBuilder.append(recognition.getTitle());
-                strBuilder.append(" ");
-            }
-            if (recognition.getConfidence() != null) {
-                strBuilder.append(
-                        String.format(Locale.US,
-                                "%.2f",
-                                (100 * recognition.getConfidence())
-                        )
-                );
-                strBuilder.append("%");
-            }
-            strBuilder.append("\n");
-        }
-        strBuilder.subSequence(0, strBuilder.length() - 1);
+        Classifier.Recognition mostProbable = Collections.max(results, (o1, o2) -> {
+            if (o1.getConfidence() > o2.getConfidence())
+                return 1;
+            else if (o1.getConfidence() < o2.getConfidence())
+                return -1;
+            return 0;
+        });
 
-        tvClassificationResult.setText(strBuilder.toString());
+        if (mostProbable.getConfidence() < CLASSIFICATION_THRESHOLD) {
+            Toast.makeText(this, "Unable to determine mushroom's species", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Log.i("MainActivity", Float.toString(mostProbable.getConfidence()));
+
+        Intent mushroomInformationIntent = new Intent(this, MushroomInformationActivity.class);
+        mushroomInformationIntent.putExtra(MushroomInformationActivity.MUSHROOM_SPECIES_NAME, mostProbable.getTitle());
+        startActivity(mushroomInformationIntent);
     }
 
     private File createImageFile() throws IOException {
