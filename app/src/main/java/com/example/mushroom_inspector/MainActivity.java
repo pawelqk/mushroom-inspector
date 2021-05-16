@@ -7,12 +7,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,8 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -41,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
     private static final Logger LOGGER = new Logger();
     private static final int RESULT_LOAD_IMG_CODE = 1;
     private static final int REQUEST_IMAGE_CAPTURE = 2;
-    private static final double CLASSIFICATION_THRESHOLD = 0.75;
     private Classifier classifier;
     private Bitmap picture;
     private boolean classficationRunning;
@@ -206,8 +202,9 @@ public class MainActivity extends AppCompatActivity {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(recognitions -> {
-                    if(classifier != null)
+                    if (classifier != null) {
                         classifier.close();
+                    }
                     classficationRunning = false;
                     showClassificationResult(recognitions);
                 }, errorThrowable -> {
@@ -224,25 +221,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showClassificationResult(List<Classifier.Recognition> results) {
-        StringBuilder strBuilder = new StringBuilder();
-        Classifier.Recognition mostProbable = Collections.max(results, (o1, o2) -> {
-            if (o1.getConfidence() > o2.getConfidence())
-                return 1;
-            else if (o1.getConfidence() < o2.getConfidence())
-                return -1;
-            return 0;
-        });
-
-        if (mostProbable.getConfidence() < CLASSIFICATION_THRESHOLD) {
-            Toast.makeText(this, "Unable to determine mushroom's species", Toast.LENGTH_LONG).show();
-            return;
+        List<String> parsedResults = new ArrayList<>();
+        for (Classifier.Recognition result : results) {
+            parsedResults.add(String.format(Locale.getDefault(), "%s (%.2f %%)", result.getTitle(), result.getConfidence() * 100));
         }
 
-        Log.i("MainActivity", Float.toString(mostProbable.getConfidence()));
+        String[] resultsStrArray = parsedResults.toArray(new String[parsedResults.size()]);
 
-        Intent mushroomInformationIntent = new Intent(this, MushroomInformationActivity.class);
-        mushroomInformationIntent.putExtra(MushroomInformationActivity.MUSHROOM_SPECIES_NAME, mostProbable.getTitle());
-        startActivity(mushroomInformationIntent);
+        Intent mushroomResultsIntent = new Intent(this, ResultsActivity.class);
+        mushroomResultsIntent.putExtra(ResultsActivity.MATCHED_SPECIES, resultsStrArray);
+        startActivity(mushroomResultsIntent);
     }
 
     private File createImageFile() throws IOException {
@@ -250,13 +238,12 @@ public class MainActivity extends AppCompatActivity {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
+
+        return File.createTempFile(
                 imageFileName,  /* prefix */
                 ".jpg",         /* suffix */
                 storageDir      /* directory */
         );
-
-        return image;
     }
 
     private void takePhoto() {
