@@ -2,7 +2,6 @@ package com.example.mushroom_inspector;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -18,11 +17,10 @@ import androidx.core.content.FileProvider;
 
 import com.example.mushroom_inspector.env.Logger;
 import com.example.mushroom_inspector.tflite.Classifier;
+import com.example.mushroom_inspector.utils.ImageLoader;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -43,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean classficationRunning;
     private Disposable classificationDisposable;
     private Uri photoUri;
+    private ImageLoader.PicassoTarget pictureTarget;
+    private boolean isPictureBeingLoaded;
 
     private RadioGroup rgDevices;
     private EditText etNumOfThreads;
@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         classficationRunning = false;
+        isPictureBeingLoaded = false;
     }
 
     private void selectPictureFromGallery() {
@@ -108,22 +109,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadPicture(Uri imageUri) {
-        try {
-            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            InputStream imageStream = getContentResolver().openInputStream(imageUri);
-            if (picture != null)
-                picture.recycle();
-            picture = BitmapFactory.decodeStream(imageStream, null, decodeOptions);
-            ivPicture.setImageBitmap(picture);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Toast.makeText(
-                    this,
-                    "Couldn't load picture from uri: " + imageUri,
-                    Toast.LENGTH_LONG
-            ).show();
+//            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+//            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+//            InputStream imageStream = getContentResolver().openInputStream(imageUri);
+
+        if(isPictureBeingLoaded)
+            return;
+
+        if (picture != null) {
+            ivPicture.setImageBitmap(null);
+            picture.recycle();
+            picture = null;
         }
+//            picture = BitmapFactory.decodeStream(imageStream, null, decodeOptions);
+        isPictureBeingLoaded = true;
+        pictureTarget = ImageLoader.bitmapFromUri(
+                imageUri,
+                this::onImageLoadSuccess,
+                this::onImageLoadFailed
+        );
+    }
+
+    private void onImageLoadSuccess(final Bitmap imageBitmap) {
+        LOGGER.i("onImageLoadSuccess()");
+        picture = imageBitmap;
+        ivPicture.setImageBitmap(picture);
+        isPictureBeingLoaded = false;
+    }
+
+    private void onImageLoadFailed(final Uri imageUri) {
+        LOGGER.i("onImageLoadFailed() imageUri=%s", imageUri.toString());
+        Toast.makeText(this, "Couldn't load image from uri: " + imageUri,
+                Toast.LENGTH_LONG ).show();
+        isPictureBeingLoaded = false;
     }
 
     private void runClassification() {
