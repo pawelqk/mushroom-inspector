@@ -44,8 +44,6 @@ public class MainActivity extends AppCompatActivity {
     private Disposable classificationDisposable;
     private Uri photoUri;
 
-    private RadioGroup rgDevices;
-    private EditText etNumOfThreads;
     private Button btnSelectPicture;
     private Button btnRunClassifier;
     private Button btnTakePhoto;
@@ -69,8 +67,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        rgDevices = findViewById(R.id.rg_device);
-        etNumOfThreads = findViewById(R.id.et_num_of_threads);
         btnSelectPicture = findViewById(R.id.btn_image_select);
         btnRunClassifier = findViewById(R.id.btn_run_classification);
         btnTakePhoto = findViewById(R.id.btn_take_photo);
@@ -83,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         classficationRunning = false;
+
     }
 
     private void selectPictureFromGallery() {
@@ -130,73 +127,36 @@ public class MainActivity extends AppCompatActivity {
         if (classficationRunning)
             return;
 
-        Classifier.Device device = getSelectedDevice();
-        if (device == null) {
-            LOGGER.i("runClassification() device not selected");
-            Toast.makeText(this, "Select CPU or GPU device", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        int numOfThreads = getNumOfThreads();
-        if (device == Classifier.Device.CPU && numOfThreads <= 0) {
-            LOGGER.i("runClassification() Invalid num of threads: %d", numOfThreads);
-            Toast.makeText(this, "Invalid number of threads: "
-                    + numOfThreads, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         if (picture == null) {
             LOGGER.i("runClassification() picture is null");
             Toast.makeText(this, "Please select a picture", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        doRunClassifier(device, numOfThreads);
+        doRunClassifier();
     }
 
-    private int getNumOfThreads() {
-        try {
-            return Integer.parseInt(etNumOfThreads.getText().toString());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private Classifier.Device getSelectedDevice() {
-        int selectedRadioButtonId = rgDevices.getCheckedRadioButtonId();
-        if (selectedRadioButtonId == R.id.rb_cpu_device)
-            return Classifier.Device.CPU;
-        else if (selectedRadioButtonId == R.id.rb_gpu_device)
-            return Classifier.Device.GPU;
-        else {
-            return null;
-        }
-    }
-
-    private void recreateClassifier(Classifier.Device device, int numThreads) {
-        LOGGER.i("MainActivity::recreateClassifier() device=%s, numThreads=%d",
-                device.name(), numThreads);
+    private void recreateClassifier() {
         if (classifier != null) {
             LOGGER.d("Closing classifier.");
             classifier.close();
             classifier = null;
         }
         try {
-            LOGGER.d(
-                    "Creating classifier (device=%s, numThreads=%d)", device, numThreads);
-            classifier = Classifier.create(this, device, numThreads);
+            LOGGER.d("Creating classifier");
+            classifier = Classifier.create(this);
         } catch (IOException e) {
             LOGGER.e(e, "Failed to create classifier.");
         }
     }
 
-    private void doRunClassifier(Classifier.Device device, int numThreads) {
+    private void doRunClassifier() {
         LOGGER.i("Running classification");
         Toast.makeText(this, "Running classification", Toast.LENGTH_SHORT).show();
         classficationRunning = true;
         classificationDisposable = Observable
                 .fromCallable(() -> {
-                    recreateClassifier(device, numThreads);
+                    recreateClassifier();
                     return classifier.recognizeImage(picture, 0);
                 })
                 .subscribeOn(Schedulers.io())

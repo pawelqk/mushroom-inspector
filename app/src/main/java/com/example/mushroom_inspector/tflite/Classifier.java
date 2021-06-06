@@ -37,6 +37,7 @@ import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
 import org.tensorflow.lite.support.image.ops.Rot90Op;
 import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+import org.tensorflow.lite.gpu.CompatibilityList;
 
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
@@ -99,10 +100,10 @@ public abstract class Classifier {
    * @param numThreads The number of threads to use for classification.
    * @return A classifier with the desired configuration.
    */
-  public static Classifier create(Activity activity, Device device, int numThreads)
+  public static Classifier create(Activity activity)
       throws IOException {
 
-    return new ClassifierFloatMobileNet(activity, device, numThreads);
+    return new ClassifierFloatMobileNet(activity);
   }
 
   /** An immutable result returned by a Classifier describing what was recognized. */
@@ -175,16 +176,16 @@ public abstract class Classifier {
     }
   }
 
-  protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
+  protected Classifier(Activity activity) throws IOException {
     tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
-    switch (device) {
-      case GPU:
+    CompatibilityList compatList = new CompatibilityList();
+    if(compatList.isDelegateSupportedOnThisDevice()) {
+        LOGGER.d("Classifier() GpuDelegate supported");
         gpuDelegate = new GpuDelegate();
         tfliteOptions.addDelegate(gpuDelegate);
-        break;
-      case CPU:
-        break;
     }
+    int numThreads =  (int) Math.ceil(Runtime.getRuntime().availableProcessors() * 0.75);
+    LOGGER.d("Classifier() numThreads=%d", numThreads);
     tfliteOptions.setNumThreads(numThreads);
     tflite = new Interpreter(tfliteModel, tfliteOptions);
 

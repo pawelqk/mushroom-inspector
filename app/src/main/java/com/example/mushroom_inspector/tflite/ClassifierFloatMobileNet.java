@@ -38,9 +38,9 @@ public class ClassifierFloatMobileNet extends Classifier {
 
   private static final float PROBABILITY_STD = 1.0f;
 
-  public ClassifierFloatMobileNet(Activity activity, Device device, int numThreads)
+  public ClassifierFloatMobileNet(Activity activity)
       throws IOException {
-    super(activity, device, numThreads);
+    super(activity);
   }
 
   @Override
